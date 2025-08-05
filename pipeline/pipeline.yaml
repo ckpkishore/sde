@@ -70,7 +70,7 @@ spec:
               export SI_VERSION=6.2.0.3
 
               echo "Cloning Sterling automation repository"
-              git clone https://github.com/ibm-sterling-devops/ansible-ibm-sterling.git
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git
               cd ansible-ibm-sterling
 
               ls -ltr
