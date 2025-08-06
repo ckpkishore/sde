@@ -119,6 +119,14 @@ spec:
               #!/bin/sh
               set -e
 
+              # Wait until pod is Ready
+              echo "Waiting for pod $(params.pod-name) to be Ready..."
+              until oc get pod $(params.pod-name) -n $(params.namespace) -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' | grep -q True; do
+                echo "ASI Pod not ready yet. Sleeping 30s..."
+                sleep 30
+              done
+              echo "Pod $(params.pod-name) is Ready."
+
               echo "Extracting secret from OCP..."
               value=$(oc get secret -n $(params.namespace) "$(params.secret-name)" -o "jsonpath={.data.$(params.secret-key)}" | base64 -d)
               echo "The secret value is: $value"
