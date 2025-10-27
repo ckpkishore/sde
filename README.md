@@ -1,2 +1,2 @@
 # sde
-Sterling Data Exchange
+IBM Sterling Data Exchange Pipeline
