@@ -105,7 +105,7 @@ spec:
               echo "B2BI Ansible playbook finished"
     - name: ssp-install
       runAfter:
-        - b2bi-install
+        - set-ibm-entitlement-key
       taskSpec:
         metadata: {}
         spec: null
@@ -152,7 +152,7 @@ spec:
               echo "SSP Ansible playbook finished"
     - name: seas-install
       runAfter:
-        - b2bi-install
+        - set-ibm-entitlement-key
       taskSpec:
         metadata: {}
         spec: null
@@ -199,7 +199,7 @@ spec:
               echo "SEAS Ansible playbook finished"
     - name: scc-install
       runAfter:
-        - b2bi-install
+        - set-ibm-entitlement-key
       taskSpec:
         metadata: {}
         spec: null
