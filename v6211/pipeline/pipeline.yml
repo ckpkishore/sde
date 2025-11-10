@@ -245,3 +245,98 @@ spec:
               echo "Running SCC install via Ansible..."
               ansible-playbook playbooks/deploy_scc.yml
               echo "SCC Ansible playbook finished"
+    - name: cd-install
+      runAfter:
+        - set-ibm-entitlement-key
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/kishorec/sde:latest'
+            name: install-cd
+            script: |
+              #!/bin/bash
+              set -e
+
+              export ENTITLED_REGISTRY_KEY="$(tasks.set-ibm-entitlement-key.results.effective-entitlement-key)"
+              export ANSIBLE_CONFIG=./ansible.cfg
+
+              export CD_NODENAME=CDNODE01
+              export CD_NAMESPACE=ibm-cd-dev01-app
+              export CD_VERSION=6.4.0.2-iFix008-2025-08-21
+
+              echo "Cloning Sterling automation repository"
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git
+              cd ansible-ibm-sterling
+
+              ls -ltr
+
+              # Set Helm version
+              HELM_VERSION=v3.18.3
+
+              # Download and extract Helm
+              curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz
+              tar -zxvf helm.tar.gz
+
+              # Move helm binary to a local bin directory (e.g., /workspace/bin) and add to PATH
+              mkdir -p /workspace/bin
+              mv linux-amd64/helm /workspace/bin/helm
+              chmod +x /workspace/bin/helm
+
+              # Add it to PATH
+              export PATH="/workspace/bin:$PATH"
+
+              # Verify installation
+              helm version
+
+              echo "Running CD install via Ansible..."
+              ansible-playbook playbooks/deploy_cd.yml
+              echo "CD Ansible playbook finished"
+    - name: cdws-install
+      runAfter:
+        - set-ibm-entitlement-key
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/kishorec/sde:latest'
+            name: install-cdws
+            script: |
+              #!/bin/bash
+              set -e
+
+              export ENTITLED_REGISTRY_KEY="$(tasks.set-ibm-entitlement-key.results.effective-entitlement-key)"
+              export ANSIBLE_CONFIG=./ansible.cfg
+
+              export CDWS_NAMESPACE=ibm-cdws-dev01-app
+              export CDWS_VERSION=6.4.0.2_ifix001
+
+              echo "Cloning Sterling automation repository"
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git
+              cd ansible-ibm-sterling
+
+              ls -ltr
+
+              # Set Helm version
+              HELM_VERSION=v3.18.3
+
+              # Download and extract Helm
+              curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz
+              tar -zxvf helm.tar.gz
+
+              # Move helm binary to a local bin directory (e.g., /workspace/bin) and add to PATH
+              mkdir -p /workspace/bin
+              mv linux-amd64/helm /workspace/bin/helm
+              chmod +x /workspace/bin/helm
+
+              # Add it to PATH
+              export PATH="/workspace/bin:$PATH"
+
+              # Verify installation
+              helm version
+
+              echo "Running CDWS install via Ansible..."
+              ansible-playbook playbooks/deploy_cdws.yml
+              echo "CDWS Ansible playbook finished"
