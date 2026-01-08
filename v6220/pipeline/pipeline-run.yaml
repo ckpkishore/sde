@@ -1,0 +1,14 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pr-sterling-deploy-
+  namespace: default
+spec:
+  pipelineRef:
+    name: sterling-devops-deploy  
+  params:
+    - name: ibm-entitlement-key
+      value: "false"
+  timeouts:
+    pipeline: "24h"     
+    tasks: "24h"
