@@ -127,6 +127,7 @@ spec:
               echo "Extracting secret from OCP..."
               value=$(oc get secret -n $(params.namespace) "$(params.secret-name)" -o "jsonpath={.data.$(params.secret-key)}" | base64 -d)
               echo "The secret value is: $value"
+
               echo "Downloading TXExportConfig.xml from GitHub..."
               curl -sSL -o TXExportConfig.xml https://raw.githubusercontent.com/ckpkishore/sde/refs/heads/main/sfg/TXExportConfig.xml
               echo "Downloaded TXExportConfig.xml"
@@ -138,6 +139,7 @@ spec:
               oc exec -n $(params.namespace) $(params.pod-name) \
                 -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/TXExportConfig.xml -passphrase $value -update -errors errors.txt"
               echo "TXExportConfig.xml import complete"
+
               echo "Downloading customer_overrides.properties from GitHub..."
               curl -sSL -o customer_overrides.properties https://raw.githubusercontent.com/ckpkishore/sde/refs/heads/main/sfg/customer_overrides.properties
               echo "Downloaded customer_overrides.properties"
@@ -145,6 +147,7 @@ spec:
               echo "Importing customer_overrides.properties..."
               oc create configmap s0-b2bi-config-property --from-file=customer_overrides.properties -n $(params.namespace) --dry-run=client -o yaml | oc apply -f -
               echo "customer_overrides.properties import complete"
+
               echo "Downloading IBM_SDE_Troubleshooting_Agent.ipynb from GitHub..."
               curl -fSL -o IBM_SDE_Troubleshooting_Agent.ipynb https://raw.githubusercontent.com/ckpkishore/sde/refs/heads/main/notebook/IBM_SDE_Troubleshooting_Agent.ipynb
               echo "Downloaded IBM_SDE_Troubleshooting_Agent.ipynb"
@@ -152,6 +155,31 @@ spec:
               echo "Copying IBM_SDE_Troubleshooting_Agent.ipynb to pod $(params.pod-name)..."
               oc cp IBM_SDE_Troubleshooting_Agent.ipynb $(params.namespace)/$(params.pod-name):/tmp/IBM_SDE_Troubleshooting_Agent.ipynb
               echo "Copied IBM_SDE_Troubleshooting_Agent.ipynb"
+
+              echo "Downloading sfgSFTPDemoScenario.xml from GitHub..."
+              curl -sSL -o sfgSFTPDemoScenario.xml https://raw.githubusercontent.com/Knickkennedy/ibm-sterling-automation/36eea647f7ceba2624df44b91e46c29f61a940a9/roles/sb2bi_scenario_sftp/files/sfgSFTPDemoScenario.xml
+              echo "Downloaded sfgSFTPDemoScenario.xml"
+              sleep 10
+              echo "Copying sfgSFTPDemoScenario.xml to pod $(params.pod-name)..."
+              oc cp sfgSFTPDemoScenario.xml $(params.namespace)/$(params.pod-name):/tmp/sfgSFTPDemoScenario.xml
+              echo "Copied sfgSFTPDemoScenario.xml"
+              echo "Running import script inside pod $(params.pod-name)..."
+              oc exec -n $(params.namespace) $(params.pod-name) \
+                -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/sfgSFTPDemoScenario.xml -passphrase $value -update -errors errors.txt"
+              echo "sfgSFTPDemoScenario.xml import complete"
+
+              echo "Downloading PGP_DEMO_export.xml from GitHub..."
+              curl -sSL -o PGP_DEMO_export.xml https://raw.githubusercontent.com/Knickkennedy/ibm-sterling-automation/36eea647f7ceba2624df44b91e46c29f61a940a9/roles/sb2bi_scenario_sftp/files/PGP_DEMO_export.xml
+              echo "Downloaded PGP_DEMO_export.xml"
+              sleep 10
+              echo "Copying PGP_DEMO_export.xml to pod $(params.pod-name)..."
+              oc cp PGP_DEMO_export.xml $(params.namespace)/$(params.pod-name):/tmp/PGP_DEMO_export.xml
+              echo "Copied PGP_DEMO_export.xml"
+              echo "Running import script inside pod $(params.pod-name)..."
+              oc exec -n $(params.namespace) $(params.pod-name) \
+                -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/PGP_DEMO_export.xml -passphrase $value -update -errors errors.txt"
+              echo "PGP_DEMO_export.xml import complete"
+
               sleep 120
     - name: ssp-install
       runAfter:
@@ -390,3 +418,85 @@ spec:
               echo "Running CDWS install via Ansible..."
               ansible-playbook playbooks/deploy_cdws.yml
               echo "CDWS Ansible playbook finished"
+    - name: minio-install
+      runAfter:
+        - set-ibm-entitlement-key
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/kishorec/sde:latest'
+            name: install-minio
+            script: |
+              #!/bin/bash
+              set -e
+
+              export ENTITLED_REGISTRY_KEY="$(tasks.set-ibm-entitlement-key.results.effective-entitlement-key)"
+              export ANSIBLE_CONFIG=./ansible.cfg
+
+              export MINIO_NAMESPACE=ibm-minio
+
+              echo "Cloning Sterling automation repository"
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git
+              cd ansible-ibm-sterling
+
+              ls -ltr
+
+              echo "Running Minio install via Ansible..."
+              ansible-playbook playbooks/tools/minio.yml
+              echo "Minio Ansible playbook finished"
+    - name: kafka-install
+      runAfter:
+        - set-ibm-entitlement-key
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/kishorec/sde:latest'
+            name: install-kafka
+            script: |
+              #!/bin/bash
+              set -e
+
+              export ANSIBLE_CONFIG=./ansible.cfg
+
+              export SI_INSTANCE_ID=dev01
+
+              echo "Cloning Sterling automation repository"
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git
+              cd ansible-ibm-sterling
+
+              ls -ltr
+
+              echo "Running Kafka install via Ansible..."
+              ansible-playbook playbooks/tools/kafka.yml
+              echo "Kafka Ansible playbook finished"
+    - name: kowl-install
+      runAfter:
+        - set-ibm-entitlement-key
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/kishorec/sde:latest'
+            name: install-kowl
+            script: |
+              #!/bin/bash
+              set -e
+
+              export ANSIBLE_CONFIG=./ansible.cfg
+
+              export SI_INSTANCE_ID=dev01
+
+              echo "Cloning Sterling automation repository"
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git
+              cd ansible-ibm-sterling
+
+              ls -ltr
+
+              echo "Running Kowl install via Ansible..."
+              ansible-playbook playbooks/tools/kowl.yml
+              echo "Kowl Ansible playbook finished"
