@@ -448,7 +448,7 @@ spec:
               echo "Minio Ansible playbook finished"
     - name: kafka-install
       runAfter:
-        - set-ibm-entitlement-key
+        - b2bi-install
       taskSpec:
         metadata: {}
         spec: null
@@ -475,7 +475,7 @@ spec:
               echo "Kafka Ansible playbook finished"
     - name: kowl-install
       runAfter:
-        - set-ibm-entitlement-key
+        - kafka-install
       taskSpec:
         metadata: {}
         spec: null
