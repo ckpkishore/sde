@@ -486,9 +486,61 @@ spec:
               echo "Running Minio install via Ansible..."
               ansible-playbook playbooks/tools/minio.yml
               echo "Minio Ansible playbook finished"
-    - name: kafka-install
+    - name: sterling-restart
       runAfter:
         - b2bi-install
+      taskSpec:
+        params:
+          - name: pod-name
+            description: Name of the target pod
+            default: s0-b2bi-asi-server-0
+          - name: namespace
+            description: Namespace of SFG
+            default: ibm-b2bi-dev01-app
+        steps:
+          - name: stop-start
+            image: quay.io/openshift/origin-cli:4.15
+            script: |
+              #!/bin/sh
+              set -e
+
+              echo "Stopping the application..."
+              oc scale statefulset s0-b2bi-ac-server --replicas=0 -n $(params.namespace)
+              oc scale statefulset s0-b2bi-api-server --replicas=0 -n $(params.namespace)
+              oc scale statefulset s0-b2bi-asi-server --replicas=0 -n $(params.namespace)
+              echo "Application stopped"
+
+              echo "Starting the application..."
+              oc scale statefulset s0-b2bi-ac-server --replicas=1 -n $(params.namespace)
+              oc scale statefulset s0-b2bi-api-server --replicas=1 -n $(params.namespace)
+              oc scale statefulset s0-b2bi-asi-server --replicas=1 -n $(params.namespace)
+
+              NAMESPACE="$(params.namespace)"
+              LABEL="statefulset.kubernetes.io/pod-name=$(params.pod-name)"
+
+
+              # Step 1: Wait until the pod exists
+              echo "Waiting for pod to be created..."
+              until oc get pod -l "$LABEL" -n "$NAMESPACE" --no-headers 2>/dev/null | grep -q .; do
+                sleep 120
+              done
+
+              # Step 2: Get the actual pod name
+              POD_NAME=$(oc get pod -l "$LABEL" -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
+
+              # Step 3: Wait until the pod becomes ready
+              echo "Pod found: $POD_NAME"
+              until [ "$(oc get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[0].ready}' 2>/dev/null)" = "true" ]; do
+                echo "Waiting for pod to become ready..."
+                sleep 120
+              done
+
+              echo "Pod $POD_NAME is ready."
+
+              echo "Application started"
+    - name: kafka-install
+      runAfter:
+        - sterling-restart
       taskSpec:
         metadata: {}
         spec: null
@@ -540,55 +592,3 @@ spec:
               echo "Running Kowl install via Ansible..."
               ansible-playbook playbooks/tools/kowl.yml
               echo "Kowl Ansible playbook finished"
-    - name: sterling-restart
-      runAfter:
-        - kafka-install
-      taskSpec:
-        params:
-          - name: pod-name
-            description: Name of the target pod
-            default: s0-b2bi-asi-server-0
-          - name: namespace
-            description: Namespace of SFG
-            default: ibm-b2bi-dev01-app
-        steps:
-          - name: stop-start
-            image: quay.io/openshift/origin-cli:4.15
-            script: |
-              #!/bin/sh
-              set -e
-
-              echo "Stopping the application..."
-              oc scale statefulset s0-b2bi-ac-server --replicas=0 -n $(params.namespace)
-              oc scale statefulset s0-b2bi-api-server --replicas=0 -n $(params.namespace)
-              oc scale statefulset s0-b2bi-asi-server --replicas=0 -n $(params.namespace)
-              echo "Application stopped"
-
-              echo "Starting the application..."
-              oc scale statefulset s0-b2bi-ac-server --replicas=1 -n $(params.namespace)
-              oc scale statefulset s0-b2bi-api-server --replicas=1 -n $(params.namespace)
-              oc scale statefulset s0-b2bi-asi-server --replicas=1 -n $(params.namespace)
-
-              NAMESPACE="$(params.namespace)"
-              LABEL="statefulset.kubernetes.io/pod-name=$(params.pod-name)"
-
-
-              # Step 1: Wait until the pod exists
-              echo "Waiting for pod to be created..."
-              until oc get pod -l "$LABEL" -n "$NAMESPACE" --no-headers 2>/dev/null | grep -q .; do
-                sleep 120
-              done
-
-              # Step 2: Get the actual pod name
-              POD_NAME=$(oc get pod -l "$LABEL" -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
-
-              # Step 3: Wait until the pod becomes ready
-              echo "Pod found: $POD_NAME"
-              until [ "$(oc get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[0].ready}' 2>/dev/null)" = "true" ]; do
-                echo "Waiting for pod to become ready..."
-                sleep 120
-              done
-
-              echo "Pod $POD_NAME is ready."
-
-              echo "Application started"
