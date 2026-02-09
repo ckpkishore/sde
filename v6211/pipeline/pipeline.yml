@@ -180,6 +180,46 @@ spec:
                 -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/PGP_DEMO_export.xml -passphrase $value -update -errors errors.txt"
               echo "PGP_DEMO_export.xml import complete"
 
+              echo "Downloading B2BiLevel3ImportsAndData.zip from GitHub..."
+              curl -sSL -o B2BiLevel3ImportsAndData.zip https://raw.githubusercontent.com/IBM/SalesEnablement-SterlingDataExchange-V2-L3/refs/heads/main/tools/B2BiLevel3ImportsAndData.zip
+              echo "Downloaded B2BiLevel3ImportsAndData.zip"
+              unzip B2BiLevel3ImportsAndData.zip
+              cd B2BiLevel3ImportsAndData
+              sleep 10
+              echo "Copying Demo01 - ExportPassthroughLab01.xml to pod $(params.pod-name)..."
+              oc cp Demo01/Import/ExportPassthroughLab01.xml $(params.namespace)/$(params.pod-name):/tmp/ExportPassthroughLab01.xml
+              echo "Copied ExportPassthroughLab01.xml"
+              echo "Running import script inside pod $(params.pod-name)..."
+              oc exec -n $(params.namespace) $(params.pod-name) \
+                -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/ExportPassthroughLab01.xml -passphrase password -update -errors errors.txt"
+              echo "ExportPassthroughLab01.xml import complete"
+
+              echo "Copying Demo02 - Lab02_All_Import.xml to pod $(params.pod-name)..."
+              oc cp Demo02/Allconfig/Lab02_All_Import.xml $(params.namespace)/$(params.pod-name):/tmp/Lab02_All_Import.xml
+              echo "Copied Lab02_All_Import.xml"
+              echo "Running import script inside pod $(params.pod-name)..."
+              oc exec -n $(params.namespace) $(params.pod-name) \
+                -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/Lab02_All_Import.xml -passphrase password -update -errors errors.txt"
+              echo "Lab02_All_Import.xml import complete"
+
+              echo "Copying Demo03 - Lab03-Export.xml to pod $(params.pod-name)..."
+              oc cp Demo03/Import/Lab03-Export.xml $(params.namespace)/$(params.pod-name):/tmp/Lab03-Export.xml
+              echo "Copied Lab03-Export.xml"
+              echo "Running import script inside pod $(params.pod-name)..."
+              oc exec -n $(params.namespace) $(params.pod-name) \
+                -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/Lab03-Export.xml -passphrase password -update -errors errors.txt"
+              echo "Lab03-Export.xml import complete"
+
+              echo "Copying Demo04 - SFG-Lab4-Export.xml to pod $(params.pod-name)..."
+              oc cp Demo04/Import/SFG-Lab4-Export.xml $(params.namespace)/$(params.pod-name):/tmp/SFG-Lab4-Export.xml
+              echo "Copied SFG-Lab4-Export.xml"
+              echo "Running import script inside pod $(params.pod-name)..."
+              oc exec -n $(params.namespace) $(params.pod-name) \
+                -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/SFG-Lab4-Export.xml -passphrase password -update -errors errors.txt"
+              echo "SFG-Lab4-Export.xml import complete"
+
+              echo "B2BiLevel3ImportsAndData.zip import complete"
+
               sleep 120
     - name: ssp-install
       runAfter:
@@ -500,3 +540,55 @@ spec:
               echo "Running Kowl install via Ansible..."
               ansible-playbook playbooks/tools/kowl.yml
               echo "Kowl Ansible playbook finished"
+    - name: sterling-restart
+      runAfter:
+        - kafka-install
+      taskSpec:
+        params:
+          - name: pod-name
+            description: Name of the target pod
+            default: s0-b2bi-asi-server-0
+          - name: namespace
+            description: Namespace of SFG
+            default: ibm-b2bi-dev01-app
+        steps:
+          - name: stop-start
+            image: quay.io/openshift/origin-cli:4.15
+            script: |
+              #!/bin/sh
+              set -e
+
+              echo "Stopping the application..."
+              oc scale statefulset s0-b2bi-ac-server --replicas=0 -n $(params.namespace)
+              oc scale statefulset s0-b2bi-api-server --replicas=0 -n $(params.namespace)
+              oc scale statefulset s0-b2bi-asi-server --replicas=0 -n $(params.namespace)
+              echo "Application stopped"
+
+              echo "Starting the application..."
+              oc scale statefulset s0-b2bi-ac-server --replicas=1 -n $(params.namespace)
+              oc scale statefulset s0-b2bi-api-server --replicas=1 -n $(params.namespace)
+              oc scale statefulset s0-b2bi-asi-server --replicas=1 -n $(params.namespace)
+
+              NAMESPACE="$(params.namespace)"
+              LABEL="statefulset.kubernetes.io/pod-name=$(params.pod-name)"
+
+
+              # Step 1: Wait until the pod exists
+              echo "Waiting for pod to be created..."
+              until oc get pod -l "$LABEL" -n "$NAMESPACE" --no-headers 2>/dev/null | grep -q .; do
+                sleep 120
+              done
+
+              # Step 2: Get the actual pod name
+              POD_NAME=$(oc get pod -l "$LABEL" -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
+
+              # Step 3: Wait until the pod becomes ready
+              echo "Pod found: $POD_NAME"
+              until [ "$(oc get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[0].ready}' 2>/dev/null)" = "true" ]; do
+                echo "Waiting for pod to become ready..."
+                sleep 120
+              done
+
+              echo "Pod $POD_NAME is ready."
+
+              echo "Application started"
