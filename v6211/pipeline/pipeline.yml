@@ -195,7 +195,7 @@ spec:
                   -update -errors errors.txt"
               }
 
-              import_xml TXExportConfig.xml "$SYSTEM_PASSPHRASE"
+              echo import_xml TXExportConfig.xml "$SYSTEM_PASSPHRASE"
               import_xml sfgSFTPDemoScenario.xml "$SYSTEM_PASSPHRASE"
               import_xml PGP_DEMO_export.xml "$SYSTEM_PASSPHRASE"
               import_xml B2BiLevel3ImportsAndData/Demo01/Import/ExportPassthroughLab01.xml "password"
