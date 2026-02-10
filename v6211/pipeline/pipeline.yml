@@ -109,118 +109,111 @@ spec:
       taskSpec:
         params:
           - name: pod-name
-            description: Name of the target pod
             default: s0-b2bi-asi-server-0
           - name: namespace
-            description: Namespace of the pod
             default: ibm-b2bi-dev01-app
           - name: secret-name
             default: si-system-passphrase-secret
           - name: secret-key
             default: SYSTEM_PASSPHRASE
+
+        volumes:
+          - name: import-data
+            emptyDir: {}
+
         steps:
-          - name: fetch-configurations
-            image: quay.io/openshift/origin-cli:4.15
+          # =====================================================
+          # STEP 1: Download & unzip artifacts
+          # =====================================================
+          - name: download-artifacts
+            image: quay.io/kishorec/sde:latest
+            volumeMounts:
+              - name: import-data
+                mountPath: /workspace/data
+            workingDir: /workspace/data
             script: |
-              #!/bin/sh
+              #!/usr/bin/env bash
               set -e
-              echo "Extracting secret from OCP..."
-              value=$(oc get secret -n $(params.namespace) "$(params.secret-name)" -o "jsonpath={.data.$(params.secret-key)}" | base64 -d)
-              echo "The secret value is: $value"
 
-              echo "Downloading TXExportConfig.xml from GitHub..."
-              curl -sSL -o TXExportConfig.xml https://raw.githubusercontent.com/ckpkishore/sde/refs/heads/main/sfg/TXExportConfig.xml
-              echo "Downloaded TXExportConfig.xml"
-              sleep 10
-              echo "Copying TXExportConfig.xml to pod $(params.pod-name)..."
-              oc cp TXExportConfig.xml $(params.namespace)/$(params.pod-name):/tmp/TXExportConfig.xml
-              echo "Copied TXExportConfig.xml"
-              echo "Running import script inside pod $(params.pod-name)..."
-              oc exec -n $(params.namespace) $(params.pod-name) \
-                -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/TXExportConfig.xml -passphrase $value -update -errors errors.txt"
-              echo "TXExportConfig.xml import complete"
+              echo "Downloading Sterling artifacts..."
 
-              echo "Downloading customer_overrides.properties from GitHub..."
-              curl -sSL -o customer_overrides.properties https://raw.githubusercontent.com/ckpkishore/sde/refs/heads/main/sfg/customer_overrides.properties
-              echo "Downloaded customer_overrides.properties"
-              sleep 10
-              echo "Importing customer_overrides.properties..."
-              oc create configmap s0-b2bi-config-property --from-file=customer_overrides.properties -n $(params.namespace) --dry-run=client -o yaml | oc apply -f -
-              echo "customer_overrides.properties import complete"
+              curl -sSL -o TXExportConfig.xml \
+                https://raw.githubusercontent.com/ckpkishore/sde/refs/heads/main/sfg/TXExportConfig.xml
 
-              echo "Downloading IBM_SDE_Troubleshooting_Agent.ipynb from GitHub..."
-              curl -fSL -o IBM_SDE_Troubleshooting_Agent.ipynb https://raw.githubusercontent.com/ckpkishore/sde/refs/heads/main/notebook/IBM_SDE_Troubleshooting_Agent.ipynb
-              echo "Downloaded IBM_SDE_Troubleshooting_Agent.ipynb"
-              sleep 10
-              echo "Copying IBM_SDE_Troubleshooting_Agent.ipynb to pod $(params.pod-name)..."
-              oc cp IBM_SDE_Troubleshooting_Agent.ipynb $(params.namespace)/$(params.pod-name):/tmp/IBM_SDE_Troubleshooting_Agent.ipynb
-              echo "Copied IBM_SDE_Troubleshooting_Agent.ipynb"
+              curl -sSL -o customer_overrides.properties \
+                https://raw.githubusercontent.com/ckpkishore/sde/refs/heads/main/sfg/customer_overrides.properties
 
-              echo "Downloading sfgSFTPDemoScenario.xml from GitHub..."
-              curl -sSL -o sfgSFTPDemoScenario.xml https://raw.githubusercontent.com/Knickkennedy/ibm-sterling-automation/36eea647f7ceba2624df44b91e46c29f61a940a9/roles/sb2bi_scenario_sftp/files/sfgSFTPDemoScenario.xml
-              echo "Downloaded sfgSFTPDemoScenario.xml"
-              sleep 10
-              echo "Copying sfgSFTPDemoScenario.xml to pod $(params.pod-name)..."
-              oc cp sfgSFTPDemoScenario.xml $(params.namespace)/$(params.pod-name):/tmp/sfgSFTPDemoScenario.xml
-              echo "Copied sfgSFTPDemoScenario.xml"
-              echo "Running import script inside pod $(params.pod-name)..."
-              oc exec -n $(params.namespace) $(params.pod-name) \
-                -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/sfgSFTPDemoScenario.xml -passphrase $value -update -errors errors.txt"
-              echo "sfgSFTPDemoScenario.xml import complete"
+              curl -sSL -o IBM_SDE_Troubleshooting_Agent.ipynb \
+                https://raw.githubusercontent.com/ckpkishore/sde/refs/heads/main/notebook/IBM_SDE_Troubleshooting_Agent.ipynb
 
-              echo "Downloading PGP_DEMO_export.xml from GitHub..."
-              curl -sSL -o PGP_DEMO_export.xml https://raw.githubusercontent.com/Knickkennedy/ibm-sterling-automation/36eea647f7ceba2624df44b91e46c29f61a940a9/roles/sb2bi_scenario_sftp/files/PGP_DEMO_export.xml
-              echo "Downloaded PGP_DEMO_export.xml"
-              sleep 10
-              echo "Copying PGP_DEMO_export.xml to pod $(params.pod-name)..."
-              oc cp PGP_DEMO_export.xml $(params.namespace)/$(params.pod-name):/tmp/PGP_DEMO_export.xml
-              echo "Copied PGP_DEMO_export.xml"
-              echo "Running import script inside pod $(params.pod-name)..."
-              oc exec -n $(params.namespace) $(params.pod-name) \
-                -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/PGP_DEMO_export.xml -passphrase $value -update -errors errors.txt"
-              echo "PGP_DEMO_export.xml import complete"
+              curl -sSL -o sfgSFTPDemoScenario.xml \
+                https://raw.githubusercontent.com/Knickkennedy/ibm-sterling-automation/36eea647f7ceba2624df44b91e46c29f61a940a9/roles/sb2bi_scenario_sftp/files/sfgSFTPDemoScenario.xml
 
-              echo "Downloading B2BiLevel3ImportsAndData.zip from GitHub..."
-              curl -sSL -o B2BiLevel3ImportsAndData.zip https://raw.githubusercontent.com/IBM/SalesEnablement-SterlingDataExchange-V2-L3/refs/heads/main/tools/B2BiLevel3ImportsAndData.zip
-              echo "Downloaded B2BiLevel3ImportsAndData.zip"
-              unzip B2BiLevel3ImportsAndData.zip
-              cd B2BiLevel3ImportsAndData
-              sleep 10
-              echo "Copying Demo01 - ExportPassthroughLab01.xml to pod $(params.pod-name)..."
-              oc cp Demo01/Import/ExportPassthroughLab01.xml $(params.namespace)/$(params.pod-name):/tmp/ExportPassthroughLab01.xml
-              echo "Copied ExportPassthroughLab01.xml"
-              echo "Running import script inside pod $(params.pod-name)..."
-              oc exec -n $(params.namespace) $(params.pod-name) \
-                -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/ExportPassthroughLab01.xml -passphrase password -update -errors errors.txt"
-              echo "ExportPassthroughLab01.xml import complete"
+              curl -sSL -o PGP_DEMO_export.xml \
+                https://raw.githubusercontent.com/Knickkennedy/ibm-sterling-automation/36eea647f7ceba2624df44b91e46c29f61a940a9/roles/sb2bi_scenario_sftp/files/PGP_DEMO_export.xml
 
-              echo "Copying Demo02 - Lab02_All_Import.xml to pod $(params.pod-name)..."
-              oc cp Demo02/Allconfig/Lab02_All_Import.xml $(params.namespace)/$(params.pod-name):/tmp/Lab02_All_Import.xml
-              echo "Copied Lab02_All_Import.xml"
-              echo "Running import script inside pod $(params.pod-name)..."
-              oc exec -n $(params.namespace) $(params.pod-name) \
-                -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/Lab02_All_Import.xml -passphrase password -update -errors errors.txt"
-              echo "Lab02_All_Import.xml import complete"
+              echo "Downloading Level 3 demo data..."
+              curl -sSL -o B2BiLevel3ImportsAndData.zip \
+                https://raw.githubusercontent.com/IBM/SalesEnablement-SterlingDataExchange-V2-L3/refs/heads/main/tools/B2BiLevel3ImportsAndData.zip
 
-              echo "Copying Demo03 - Lab03-Export.xml to pod $(params.pod-name)..."
-              oc cp Demo03/Import/Lab03-Export.xml $(params.namespace)/$(params.pod-name):/tmp/Lab03-Export.xml
-              echo "Copied Lab03-Export.xml"
-              echo "Running import script inside pod $(params.pod-name)..."
-              oc exec -n $(params.namespace) $(params.pod-name) \
-                -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/Lab03-Export.xml -passphrase password -update -errors errors.txt"
-              echo "Lab03-Export.xml import complete"
+              unzip -q B2BiLevel3ImportsAndData.zip
 
-              echo "Copying Demo04 - SFG-Lab4-Export.xml to pod $(params.pod-name)..."
-              oc cp Demo04/Import/SFG-Lab4-Export.xml $(params.namespace)/$(params.pod-name):/tmp/SFG-Lab4-Export.xml
-              echo "Copied SFG-Lab4-Export.xml"
-              echo "Running import script inside pod $(params.pod-name)..."
-              oc exec -n $(params.namespace) $(params.pod-name) \
-                -- bash -c "/ibm/b2bi/install/tp_import/import.sh -input /tmp/SFG-Lab4-Export.xml -passphrase password -update -errors errors.txt"
-              echo "SFG-Lab4-Export.xml import complete"
+              echo "Artifacts staged:"
+              ls -R .
 
-              echo "B2BiLevel3ImportsAndData.zip import complete"
+          # =====================================================
+          # STEP 2: Import into B2BI
+          # =====================================================
+          - name: import-into-b2bi
+            image: quay.io/openshift/origin-cli:4.15
+            volumeMounts:
+              - name: import-data
+                mountPath: /workspace/data
+            workingDir: /workspace/data
+            script: |
+              #!/usr/bin/env bash
+              set -e
 
-              sleep 120
+              echo "Extracting SYSTEM_PASSPHRASE..."
+              SYSTEM_PASSPHRASE=$(oc get secret -n $(params.namespace) "$(params.secret-name)" \
+                -o "jsonpath={.data.$(params.secret-key)}" | base64 -d)
+
+              import_xml () {
+                FILE=$1
+                PASSPHRASE=$2
+                BASENAME=$(basename "$FILE")
+
+                echo "→ Importing $BASENAME"
+
+                oc cp "$FILE" \
+                  $(params.namespace)/$(params.pod-name):/tmp/$BASENAME
+
+                oc exec -n $(params.namespace) $(params.pod-name) -- bash -c \
+                  "/ibm/b2bi/install/tp_import/import.sh \
+                  -input /tmp/$BASENAME \
+                  -passphrase '$PASSPHRASE' \
+                  -update -errors errors.txt"
+              }
+
+              import_xml TXExportConfig.xml "$SYSTEM_PASSPHRASE"
+              import_xml sfgSFTPDemoScenario.xml "$SYSTEM_PASSPHRASE"
+              import_xml PGP_DEMO_export.xml "$SYSTEM_PASSPHRASE"
+              import_xml B2BiLevel3ImportsAndData/Demo01/Import/ExportPassthroughLab01.xml "password"
+              import_xml B2BiLevel3ImportsAndData/Demo02/Allconfig/Lab02_All_Import.xml "password"
+              import_xml B2BiLevel3ImportsAndData/Demo03/Import/Lab03-Export.xml "password"
+              import_xml B2BiLevel3ImportsAndData/Demo04/Import/SFG-Lab4-Export.xml "password"
+
+              echo "Updating configmap..."
+              oc create configmap s0-b2bi-config-property \
+                --from-file=customer_overrides.properties \
+                -n $(params.namespace) \
+                --dry-run=client -o yaml | oc apply -f -
+
+              echo "Copying troubleshooting notebook..."
+              oc cp IBM_SDE_Troubleshooting_Agent.ipynb \
+                $(params.namespace)/$(params.pod-name):/tmp/IBM_SDE_Troubleshooting_Agent.ipynb
+
+              echo "✅ Sterling imports completed successfully"
     - name: sterling-restart
       runAfter:
         - sterling-import-resources
