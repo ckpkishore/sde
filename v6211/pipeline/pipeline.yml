@@ -377,7 +377,7 @@ spec:
               export ENTITLED_REGISTRY_KEY="$(tasks.set-ibm-entitlement-key.results.effective-entitlement-key)"
               export ANSIBLE_CONFIG=./ansible.cfg
 
-              export SCC_PRODUCTS=CCM
+              export SCC_PRODUCTS=CCM,CCD
               export SCC_INSTANCEID=dev01
               export SCC_VERSION=6.4.0.0.iFix01_2025-05-19
 
