@@ -314,7 +314,7 @@ spec:
               echo "SSP Ansible playbook finished"
     - name: seas-install
       runAfter:
-        - set-ibm-entitlement-key
+        - ssp-install
       taskSpec:
         metadata: {}
         spec: null
@@ -361,7 +361,7 @@ spec:
               echo "SEAS Ansible playbook finished"
     - name: scc-install
       runAfter:
-        - set-ibm-entitlement-key
+        - seas-install
       taskSpec:
         metadata: {}
         spec: null
@@ -409,7 +409,7 @@ spec:
               echo "SCC Ansible playbook finished"
     - name: cd-install
       runAfter:
-        - set-ibm-entitlement-key
+        - scc-install
       taskSpec:
         metadata: {}
         spec: null
@@ -457,7 +457,7 @@ spec:
               echo "CD Ansible playbook finished"
     - name: cdws-install
       runAfter:
-        - set-ibm-entitlement-key
+        - cd-install
       taskSpec:
         metadata: {}
         spec: null
@@ -504,7 +504,7 @@ spec:
               echo "CDWS Ansible playbook finished"
     - name: minio-install
       runAfter:
-        - set-ibm-entitlement-key
+        - cdws-install
       taskSpec:
         metadata: {}
         spec: null
