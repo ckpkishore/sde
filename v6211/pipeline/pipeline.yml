@@ -195,13 +195,12 @@ spec:
                   -update -errors errors.txt"
               }
 
-              import_xml TXExportConfig.xml "$SYSTEM_PASSPHRASE"
-              import_xml sfgSFTPDemoScenario.xml "$SYSTEM_PASSPHRASE"
-              import_xml PGP_DEMO_export.xml "$SYSTEM_PASSPHRASE"
-              echo import_xml B2BiLevel3ImportsAndData/Demo01/Import/ExportPassthroughLab01.xml "password"
+              import_xml B2BiLevel3ImportsAndData/Demo01/Import/ExportPassthroughLab01.xml "password"
               import_xml B2BiLevel3ImportsAndData/Demo02/Allconfig/Lab02_All_Import.xml "password"
               import_xml B2BiLevel3ImportsAndData/Demo03/Import/Lab03-Export.xml "password"
               import_xml B2BiLevel3ImportsAndData/Demo04/Import/SFG-Lab4-Export.xml "password"
+              import_xml PGP_DEMO_export.xml "$SYSTEM_PASSPHRASE"
+              import_xml TXExportConfig.xml "$SYSTEM_PASSPHRASE"
 
               echo "Updating configmap..."
               oc create configmap s0-b2bi-config-property \
